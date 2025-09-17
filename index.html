@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Source Reviewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/heroicons/2.0.16/24/outline/heroicons.min.css" rel="stylesheet">
+    <style>
+        /* Simple scrollbar styling for a better dark mode look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .modal-backdrop {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); z-index: 40; backdrop-filter: blur(4px);
+        }
+        .modal {
+            display: none; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 50;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-300 font-sans antialiased overflow-hidden h-screen">
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden"></div>
+    <div class="relative h-screen flex">
+        <aside id="sidebar" class="w-64 bg-gray-900/80 backdrop-blur-sm border-r border-gray-700/60 flex flex-col fixed inset-y-0 left-0 z-40 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out">
+            <div class="px-6 py-4 border-b border-gray-700/60 flex justify-between items-center">
+                <h1 class="text-xl font-bold text-white">Data Sources</h1>
+                <button id="close-sidebar-btn" class="md:hidden text-gray-400 hover:text-white">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <nav id="dataSourceList" class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <div class="text-center py-4 text-gray-500">Loading sources...</div>
+            </nav>
+            <div class="p-4 border-t border-gray-700/60">
+                <button id="addSourceBtn" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    Add Source
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-screen">
+            <header class="flex items-center justify-between p-4 border-b border-gray-700/60 md:hidden sticky top-0 bg-gray-900/80 backdrop-blur-sm z-20">
+                 <button id="menu-toggle-btn" class="text-gray-300 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+                </button>
+                <h2 id="currentSourceNameMobile" class="text-lg font-bold text-white"></h2>
+            </header>
+
+            <div class="flex-1 p-4 md:p-8 overflow-y-auto">
+                <div id="welcomeMessage" class="flex flex-col items-center justify-center h-full text-center">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-24 h-24 text-gray-600 mb-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" /></svg>
+                    <h2 class="text-2xl font-bold text-white mb-2">Data Reviewer</h2>
+                    <p class="text-gray-400">Select a data source to begin.</p>
+                </div>
+
+                <div id="dataContainer" class="hidden w-full">
+                    <h2 id="currentSourceName" class="text-3xl font-bold text-white mb-6 hidden md:block"></h2>
+                    <div id="data-table-header" class="hidden md:grid gap-4 px-4 py-3 bg-gray-800 rounded-t-lg border-b border-gray-700"></div>
+                    <div id="dataTableBody" class="space-y-4 md:space-y-0"></div>
+                    <div class="mt-6 flex justify-center">
+                        <button id="loadMoreBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors hidden">
+                            Load More
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modalBackdrop" class="modal-backdrop"></div>
+    <div id="addSourceModal" class="modal w-11/12 max-w-2xl">
+        <div class="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-6 flex flex-col max-h-[90vh]">
+            <div class="flex-shrink-0 flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white">Add New Data Source</h3>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <form id="addSourceForm" class="flex-1 flex flex-col min-h-0">
+                <div class="flex-1 overflow-y-auto pr-2 md:pr-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div>
+                                <label for="sourceName" class="block text-sm font-medium text-gray-300">Data Source Name</label>
+                                <input type="text" id="sourceName" required class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="firebaseConfig" class="block text-sm font-medium text-gray-300">Firebase Config (JSON)</label>
+                                <textarea id="firebaseConfig" rows="12" required class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"></textarea>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="collectionPath" class="block text-sm font-medium text-gray-300">Collection Path</label>
+                                <input type="text" id="collectionPath" required placeholder="e.g., users" class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="fieldUsername" class="block text-sm font-medium text-gray-300">Username Field Name</label>
+                                <input type="text" id="fieldUsername" required value="username" class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="fieldPassword" class="block text-sm font-medium text-gray-300">Password/Access Field Name</label>
+                                <input type="text" id="fieldPassword" required value="password" class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="fieldCreatedAt" class="block text-sm font-medium text-gray-300">Timestamp Field Name</label>
+                                <input type="text" id="fieldCreatedAt" required value="createdAt" class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="border-t border-gray-700 pt-4 space-y-4">
+                                <div class="flex items-center">
+                                    <input id="displayPin" type="checkbox" class="h-4 w-4 rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500">
+                                    <label for="displayPin" class="ml-3 block text-sm font-medium text-gray-300">Display PIN?</label>
+                                </div>
+                                <div id="pinFieldContainer" class="hidden">
+                                    <label for="fieldPin" class="block text-sm font-medium text-gray-300">PIN Field Name</label>
+                                    <input type="text" id="fieldPin" value="pin" class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 mt-6 flex justify-end">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Save Source</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script>
+        // --- CONFIGURATION ---
+        const SETTINGS_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCIgcHwkimZvOjtmKI8mT5EUvBfkUOV8Y0",
+            authDomain: "dashboard-settings-bf761.firebaseapp.com",
+            projectId: "dashboard-settings-bf761",
+            storageBucket: "dashboard-settings-bf761.firebasestorage.app",
+            messagingSenderId: "613505771043",
+            appId: "1:613505771043:web:19bafc9b7d18d9e6053396"
+        };
+
+        // UPDATED INITIAL_DATA_SOURCE to include new PIN fields for compatibility
+        const INITIAL_DATA_SOURCE = {
+            name: "bpwccul",
+            collection: "users",
+            config: {
+                apiKey: "AIzaSyDrbOFdO7rsFpV0DcnJO413u_e5wbZComE",
+                authDomain: "cooptimal-cb9de.firebaseapp.com",
+                projectId: "cooptimal-cb9de",
+                storageBucket: "cooptimal-cb9de.firebasestorage.app",
+                messagingSenderId: "15855146345",
+                appId: "1:15855146345:web:0f20bd1bd988689f2dd9f8",
+                measurementId: "G-7XXM1SRZ4Y"
+            },
+            fieldUsername: "username",
+            fieldPassword: "access",
+            fieldCreatedAt: "createdAt",
+            displayPin: false, // Set to false by default
+            fieldPin: ""       // Set to empty by default
+        };
+        const DOCS_PER_PAGE = 20;
+
+        // --- GLOBAL STATE ---
+        let settingsApp, settingsDb, dataApp, dataDb;
+        let dataSources = [], activeDataSourceId = null, lastVisibleDoc = null, isLoading = false;
+        
+        // --- UI ELEMENTS ---
+        const modalBackdrop = document.getElementById('modalBackdrop');
+        const addSourceModal = document.getElementById('addSourceModal');
+        const dataSourceList = document.getElementById('dataSourceList');
+        const dataTableHeader = document.getElementById('data-table-header');
+        const dataTableBody = document.getElementById('dataTableBody');
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        const welcomeMessage = document.getElementById('welcomeMessage');
+        const dataContainer = document.getElementById('dataContainer');
+        const currentSourceName = document.getElementById('currentSourceName');
+        const currentSourceNameMobile = document.getElementById('currentSourceNameMobile');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const displayPinCheckbox = document.getElementById('displayPin');
+        const pinFieldContainer = document.getElementById('pinFieldContainer');
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                settingsApp = firebase.initializeApp(SETTINGS_FIREBASE_CONFIG, 'settingsApp');
+                settingsDb = settingsApp.firestore();
+                loadDataSources();
+            } catch (error) { console.error("Failed to initialize settings Firebase:", error); alert("Error: Could not connect to settings database."); }
+            setupEventListeners();
+        });
+
+        async function loadDataSources() {
+            try {
+                const snapshot = await settingsDb.collection('dataSources').orderBy('name').get();
+                if (snapshot.empty) {
+                    await settingsDb.collection('dataSources').add(INITIAL_DATA_SOURCE);
+                    return loadDataSources();
+                }
+                dataSources = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderDataSourceList();
+            } catch (error) { console.error("Error loading data sources:", error); }
+        }
+        
+        async function addDataSource(sourceData) {
+            try {
+                await settingsDb.collection('dataSources').add(sourceData);
+                await loadDataSources(); closeModal();
+            } catch(error) { console.error("Error adding data source:", error); alert("Failed to add data source."); }
+        }
+
+        async function selectDataSource(id) {
+            if (isLoading || activeDataSourceId === id) return;
+            activeDataSourceId = id; lastVisibleDoc = null; isLoading = true; dataTableBody.innerHTML = '';
+            const source = dataSources.find(ds => ds.id === id);
+            if (!source) return;
+
+            renderDataSourceList(); closeSidebar();
+            welcomeMessage.style.display = 'none'; dataContainer.style.display = 'block';
+            currentSourceName.textContent = source.name; currentSourceNameMobile.textContent = source.name;
+            
+            // Dynamically build the table header based on whether PIN is displayed
+            updateTableHeader(source);
+
+            try {
+                if (dataApp) await dataApp.delete();
+                dataApp = firebase.initializeApp(source.config, `dataApp_${id}`);
+                dataDb = dataApp.firestore();
+                await fetchData(source);
+            } catch (error) {
+                console.error(`Error initializing/fetching from ${source.name}:`, error);
+                dataTableBody.innerHTML = createErrorItem("Error connecting to data source.");
+            } finally { isLoading = false; }
+        }
+
+        function updateTableHeader(source) {
+            const hasPin = source.displayPin; // Damage Control: if displayPin is undefined, it's falsy
+            dataTableHeader.innerHTML = `
+                <div class="text-xs font-medium text-gray-300 uppercase tracking-wider">Username</div>
+                <div class="text-xs font-medium text-gray-300 uppercase tracking-wider">Password / Access</div>
+                ${hasPin ? `<div class="text-xs font-medium text-gray-300 uppercase tracking-wider">PIN</div>` : ''}
+                <div class="text-xs font-medium text-gray-300 uppercase tracking-wider">Created At</div>
+            `;
+            dataTableHeader.className = `hidden md:grid gap-4 px-4 py-3 bg-gray-800 rounded-t-lg border-b border-gray-700 ${hasPin ? 'grid-cols-4' : 'grid-cols-3'}`;
+        }
+        
+        async function fetchData(source, loadMore = false) {
+            isLoading = true; loadMoreBtn.textContent = 'Loading...'; loadMoreBtn.disabled = true;
+
+            if (!source.fieldCreatedAt) {
+                 dataTableBody.innerHTML = createErrorItem("Timestamp field not configured for this source.");
+                 isLoading = false; return;
+            }
+            try {
+                let query = dataDb.collection(source.collection).orderBy(source.fieldCreatedAt, 'desc').limit(DOCS_PER_PAGE);
+                if (loadMore && lastVisibleDoc) query = query.startAfter(lastVisibleDoc);
+                const snapshot = await query.get();
+                if (!snapshot.empty) {
+                    lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+                    renderDataItems(snapshot.docs, source);
+                    loadMoreBtn.style.display = snapshot.docs.length < DOCS_PER_PAGE ? 'none' : 'block';
+                } else {
+                    if (!loadMore) dataTableBody.innerHTML = createErrorItem("No documents found.", false);
+                    loadMoreBtn.style.display = 'none';
+                }
+            } catch (error) {
+                console.error("Error fetching documents:", error);
+                dataTableBody.innerHTML += createErrorItem(`Failed to fetch data. Check collection path and field names.`);
+            } finally {
+                isLoading = false; loadMoreBtn.textContent = 'Load More'; loadMoreBtn.disabled = false;
+            }
+        }
+
+        function renderDataSourceList() {
+            dataSourceList.innerHTML = dataSources.map(source => `
+                <a href="#" data-id="${source.id}" class="dataSourceItem block py-2.5 px-4 rounded-lg transition-colors ${activeDataSourceId === source.id ? 'bg-blue-600 text-white' : 'hover:bg-gray-800'}">
+                    ${source.name}
+                </a>
+            `).join('');
+        }
+        
+        function renderDataItems(docs, source) {
+             const { fieldUsername, fieldPassword, fieldCreatedAt, displayPin, fieldPin } = source;
+             const itemsHtml = docs.map(doc => {
+                const data = doc.data();
+                const username = data[fieldUsername] || 'N/A';
+                const password = data[fieldPassword] || 'N/A';
+                const createdAtRaw = data[fieldCreatedAt];
+                const createdAt = createdAtRaw?.toDate ? createdAtRaw.toDate().toLocaleString() : 'N/A';
+                
+                let pinCell = '';
+                let dataItemGridClass = 'md:grid-cols-3';
+                // Damage Control & Conditional Rendering for PIN
+                if (displayPin && fieldPin) {
+                    const pin = data[fieldPin] || 'N/A';
+                    pinCell = createCell('PIN', pin, pin, true);
+                    dataItemGridClass = 'md:grid-cols-4';
+                }
+
+                const createCell = (label, value, copyValue, isMono = false) => `<div class="md:flex items-center"><span class="md:hidden font-bold text-gray-400">${label}: </span><div class="flex items-center gap-2 flex-1"><span class="${isMono ? 'font-mono' : ''} truncate">${value}</span><button class="copy-btn text-gray-500 hover:text-white" data-copy="${copyValue}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button></div></div>`;
+                return `<div class="bg-gray-800/50 md:bg-transparent rounded-lg p-4 md:p-0 md:grid ${dataItemGridClass} md:gap-4 md:px-4 md:py-4 md:border-b md:border-gray-700/60 hover:bg-gray-800/50">
+                            ${createCell('Username', username, username)}
+                            ${createCell('Password', password, password, true)}
+                            ${pinCell}
+                            <div class="mt-2 md:mt-0 text-gray-400 text-sm"><span class="md:hidden font-bold text-gray-400">Created At: </span>${createdAt}</div>
+                        </div>`;
+            }).join('');
+            dataTableBody.innerHTML += itemsHtml;
+        }
+
+        function createErrorItem(message, isError = true) {
+            const colorClass = isError ? 'text-red-400' : 'text-gray-500';
+            return `<div class="p-4 text-center ${colorClass}">${message}</div>`;
+        }
+
+        function setupEventListeners() {
+            document.getElementById('addSourceBtn').addEventListener('click', openModal);
+            document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+            modalBackdrop.addEventListener('click', closeModal);
+
+            document.getElementById('addSourceForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const sourceData = {
+                    name: e.target.sourceName.value.trim(),
+                    collection: e.target.collectionPath.value.trim(),
+                    fieldUsername: e.target.fieldUsername.value.trim(),
+                    fieldPassword: e.target.fieldPassword.value.trim(),
+                    fieldCreatedAt: e.target.fieldCreatedAt.value.trim(),
+                    displayPin: e.target.displayPin.checked,
+                    fieldPin: e.target.displayPin.checked ? e.target.fieldPin.value.trim() : "",
+                };
+                try {
+                    sourceData.config = JSON.parse(e.target.firebaseConfig.value.trim());
+                    addDataSource(sourceData); e.target.reset();
+                    e.target.fieldUsername.value = 'username'; e.target.fieldPassword.value = 'password';
+                    e.target.fieldCreatedAt.value = 'createdAt'; e.target.fieldPin.value = 'pin';
+                    pinFieldContainer.classList.add('hidden'); // Hide PIN field on reset
+                } catch(error) { alert("Invalid Firebase JSON configuration."); }
+            });
+            
+            // NEW: Event listener for the "Display PIN?" checkbox
+            displayPinCheckbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    pinFieldContainer.classList.remove('hidden');
+                } else {
+                    pinFieldContainer.classList.add('hidden');
+                }
+            });
+
+            dataSourceList.addEventListener('click', (e) => {
+                const target = e.target.closest('.dataSourceItem');
+                if (target) { e.preventDefault(); selectDataSource(target.dataset.id); }
+            });
+            
+            loadMoreBtn.addEventListener('click', () => {
+                const source = dataSources.find(ds => ds.id === activeDataSourceId);
+                if (source && !isLoading) fetchData(source, true);
+            });
+            dataTableBody.addEventListener('click', (e) => {
+                const button = e.target.closest('.copy-btn');
+                if (button) copyToClipboard(button.dataset.copy, button);
+            });
+            document.getElementById('menu-toggle-btn').addEventListener('click', openSidebar);
+            document.getElementById('close-sidebar-btn').addEventListener('click', closeSidebar);
+            sidebarOverlay.addEventListener('click', closeSidebar);
+        }
+        
+        function openModal() { modalBackdrop.style.display = 'block'; addSourceModal.style.display = 'block'; }
+        function closeModal() { modalBackdrop.style.display = 'none'; addSourceModal.style.display = 'none'; }
+        function openSidebar() { sidebar.classList.remove('-translate-x-full'); sidebarOverlay.classList.remove('hidden'); }
+        function closeSidebar() { sidebar.classList.add('-translate-x-full'); sidebarOverlay.classList.add('hidden'); }
+        function copyToClipboard(text, element) { navigator.clipboard.writeText(text).then(() => { const originalIcon = element.innerHTML; element.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`; setTimeout(() => { element.innerHTML = originalIcon; }, 1500); }).catch(err => console.error('Failed to copy text: ', err)); }
+    </script>
+</body>
+</html>
+            });
+            dataTableBody.addEventListener('click', (e) => {
+                const button = e.target.closest('.copy-btn');
+                if (button) copyToClipboard(button.dataset.copy, button);
+            });
+            document.getElementById('menu-toggle-btn').addEventListener('click', openSidebar);
+            document.getElementById('close-sidebar-btn').addEventListener('click', closeSidebar);
+            sidebarOverlay.addEventListener('click', closeSidebar);
+        }
+        
+        function openModal() { modalBackdrop.style.display = 'block'; addSourceModal.style.display = 'block'; }
+        function closeModal() { modalBackdrop.style.display = 'none'; addSourceModal.style.display = 'none'; }
+        function openSidebar() { sidebar.classList.remove('-translate-x-full'); sidebarOverlay.classList.remove('hidden'); }
+        function closeSidebar() { sidebar.classList.add('-translate-x-full'); sidebarOverlay.classList.add('hidden'); }
+        function copyToClipboard(text, element) { navigator.clipboard.writeText(text).then(() => { const originalIcon = element.innerHTML; element.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`; setTimeout(() => { element.innerHTML = originalIcon; }, 1500); }).catch(err => console.error('Failed to copy text: ', err)); }
+    </script>
+</body>
+</html>
